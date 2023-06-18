@@ -2,14 +2,14 @@ package main
 
 import (
 	"fmt"
-	"runtime"
 	"sync"
+	"time"
 	_ "time"
 )
 
 type Cache struct {
 	storage map[string]int
-	mu      sync.Mutex
+	mu      sync.RWMutex
 }
 
 func (c *Cache) Increase(key string, value int) {
@@ -25,8 +25,8 @@ func (c *Cache) Set(key string, value int) {
 }
 
 func (c *Cache) Get(key string) int {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	return c.storage[key]
 }
 
@@ -36,16 +36,31 @@ func (c *Cache) Remove(key string) {
 	delete(c.storage, key)
 }
 
+const (
+	k1   = "key1"
+	step = 7
+)
+
+var wg sync.WaitGroup
+
 func main() {
-	runtime.GOMAXPROCS(20)
-	strg := &Cache{
-		storage: map[string]int{"Феррари": 240, "Мерседес": 120, "Ауди": 300},
+	cache := Cache{storage: make(map[string]int)}
+	for i := 0; i < 5; i++ {
+		for i := 0; i < 10; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				cache.Increase(k1, step)
+				time.Sleep(time.Millisecond * 100)
+			}()
+		}
+		for i := 0; i < 10; i++ {
+			go func(i int) {
+				defer wg.Done()
+				cache.Set(k1, step*i)
+				time.Sleep(time.Millisecond * 100)
+			}(i)
+		}
 	}
-	go strg.Increase("Феррари", 50)
-	go strg.Set("Ауди", 340)
-	go strg.Set("Ауди", 350)
-	go strg.Remove("Мерседес")
-	for k, v := range strg.storage {
-		fmt.Printf(k, v)
-	}
+	fmt.Println(cache.Get(k1))
 }
