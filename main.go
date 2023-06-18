@@ -55,12 +55,14 @@ func main() {
 			}()
 		}
 		for i := 0; i < 10; i++ {
+			wg.Add(1)
 			go func(i int) {
 				defer wg.Done()
 				cache.Set(k1, step*i)
 				time.Sleep(time.Millisecond * 100)
 			}(i)
 		}
+		wg.Wait()
 	}
 	fmt.Println(cache.Get(k1))
 }
