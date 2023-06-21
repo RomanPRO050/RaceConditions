@@ -42,27 +42,29 @@ const (
 )
 
 var wg sync.WaitGroup
+var mu sync.Mutex
 
 func main() {
 	cache := Cache{storage: make(map[string]int)}
-	for i := 0; i < 5; i++ {
-		for i := 0; i < 10; i++ {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				cache.Increase(k1, step)
-				time.Sleep(time.Millisecond * 100)
-			}()
-		}
-		for i := 0; i < 10; i++ {
-			wg.Add(1)
-			go func(i int) {
-				defer wg.Done()
-				cache.Set(k1, step*i)
-				time.Sleep(time.Millisecond * 100)
-			}(i)
-		}
-		wg.Wait()
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			cache.Increase(k1, step)
+			time.Sleep(100 * time.Millisecond)
+		}()
 	}
+	wg.Wait()
+	for i := 0; i < 10; i++ {
+		i := i
+		wg.Add(1)
+		go func() {
+			cache.Set(k1, step*i)
+			defer wg.Done()
+			time.Sleep(200 * time.Millisecond)
+
+		}()
+	}
+	wg.Wait()
 	fmt.Println(cache.Get(k1))
 }
